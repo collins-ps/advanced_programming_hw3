@@ -5,8 +5,9 @@
 
 #define N 4 // num children nodes
 #define DOMAIN_SIZE 1. // total size of domain
-#define THETA 1
+#define THETA 0.00001
 #define SOFTENING 1e-9f
+#define MARGIN 0.0001
 
 typedef struct particle_{
   float x, y;        /* particle positions */
@@ -36,12 +37,13 @@ void postorder(QTNode *node);
 void ran_init(float *data, int n);
 void qTree_destroy(QTNode *node);
 float *qTree_force(Particle *k, QTNode *n);
+void calc_force(Particle *p, float dt, int n);
 
 int main(const int argc, const char** argv) {
     
     // two tests for QTree design
     
-    // Set DOMAIN_SIZE to 16.
+    // #define DOMAIN_SIZE 16.
     /*
     int nParticles  = 16;      
     float buf[64] = {2,14,0,0,6,14,0,0,9,14,0,0,14,14,0,0,2,9,0,0,6,9,0,0,9,9,0,0,14,9,0,0,2,6,0,0,6,6,0,0,9,6,0,0,14,6,0,0,2,2,0,0,6,2,0,0,9,2,0,0,14,2,0,0};
@@ -76,7 +78,7 @@ int main(const int argc, const char** argv) {
     qTree_destroy(root); 
     */
 
-    // Set DOMAIN_SIZE to 1.
+    // #define DOMAIN_SIZE 1.
     /*
     int nParticles  = 16;      
     float buf[64] = {0.2,0.8,0,0,0.3,0.8,0,0,0.6,0.8,0,0,0.8,0.8,0,0,0.2,0.6,0,0,0.3,0.6,0,0,0.6,0.6,0,0,0.8,0.6,0,0,0.2,0.3,0,0,0.3,0.3,0,0,0.6,0.3,0,0,0.8,0.3,0,0,0.2,0.2,0,0,0.3,0.2,0,0,0.6,0.2,0,0,0.8,0.2,0,0};
@@ -107,6 +109,18 @@ int main(const int argc, const char** argv) {
     float *buf        =  malloc(nParticles*sizeof(Particle));
     Particle  *p          = (Particle *) buf;
     ran_init(buf, 4*nParticles); // Init pos and vel data 
+    
+    // create copy of buf for testing purposes //
+    float *buf_test        =  malloc(nParticles*sizeof(Particle));
+    Particle  *p_test          = (Particle *) buf_test;
+    for (int k = 0; k < 4*nParticles; k++){
+        buf_test[k] = buf[k];
+    }
+
+    datafile          = fopen("particles.dat","w");
+    for (int i = 0;i < nParticles; ++i)
+        fprintf(datafile, "%f %f \n", p[i].x, p[i].y);
+    fclose(datafile);
 
     QTNode *root = qTree_build(p,nParticles);
     //printf("%f, %f, %f", root->total_mass, root->center_of_mass[0],root->center_of_mass[1]);
@@ -115,32 +129,43 @@ int main(const int argc, const char** argv) {
             printf("%d, %f, %f\n", root->child[i]->which_child, root->child[i]->particle->x,root->child[i]->particle->y);
         }
     } */
-
-    datafile          = fopen("particles.dat","w");
-    for (int i = 0;i < nParticles; ++i)
-        fprintf(datafile, "%f %f \n", p[i].x, p[i].y);
-    fclose(datafile);
-
     for (int i = 0; i < nParticles; i++){
         float *forces_particle = qTree_force(&p[i],root);
+        // printf("%f,%f\n",forces_particle[0],forces_particle[1]);
         p[i].vx += dt*forces_particle[0];
         p[i].vy += dt*forces_particle[1];
+        free(forces_particle);
     } 
+    for (int i = 0 ; i < nParticles; i++) {  /* compute new position */
+        p[i].x += p[i].vx*dt;
+        p[i].y += p[i].vy*dt;
+    }
+    
+    // tests for algorithm's accuracy
+    // #define THETA 0.00001
+    // #define MARGIN 0.0001
+    calc_force(p_test, dt, nParticles); 
+    for (int i = 0 ; i < nParticles; i++) { 
+        assert(fabs(p[i].vx - p_test[i].vx) < MARGIN); 
+        assert(fabs(p[i].vy - p_test[i].vy) < MARGIN); 
+    }
+    /*for (int i = 0 ; i < nParticles; i++) { 
+        printf("%f,%f,%f,%f\n", p[i].vx, p_test[i].vx, p[i].vy, p_test[i].vy); 
+    }*/
+    printf("Passed all tests.\n"); 
     
     free(buf);
+    free(buf_test);
     qTree_destroy(root); 
 
-
-    // tests for algorithms accuracy
-    
-    // Set DOMAIN_SIZE to 16.
-
-    
     return 0;
 }
 
 float *qTree_force(Particle *k, QTNode *n){
-    static float forces[2] = {0.0f, 0.0f};
+    //static float forces[2];// = {0.0f, 0.0f};
+    float *forces = malloc(2*sizeof(float));
+    forces[0] = 0;
+    forces[1] = 0;
     //if (n == NULL) // || n->total_mass == 0)
         //return NULL;
         //printf("N is NULL");
@@ -157,6 +182,7 @@ float *qTree_force(Particle *k, QTNode *n){
         //k->vx += dt*Fx; k->vy += dt*Fy;
         forces[0] += Fx;
         forces[1] += Fy;
+        //printf("%f,%f\n",forces[0],forces[1]);
         return forces;
     }
     else{
@@ -181,6 +207,7 @@ float *qTree_force(Particle *k, QTNode *n){
                     float *force_child = qTree_force(k,n->child[i]);
                     forces[0] += force_child[0];
                     forces[1] += force_child[1];
+                    free(force_child);
                 }
             }
             return forces;
@@ -221,13 +248,13 @@ void qTree_insert(Particle *p, QTNode *n){
             printf("%d", c->which_child); */
         c->particle = n->particle;
         c->total_mass++;
-        c->center_of_mass[0] = c->particle->x;
-        c->center_of_mass[1] = c->particle->y;
+        // c->center_of_mass[0] = c->particle->x;// test remove
+        // c->center_of_mass[1] = c->particle->y;// test remove
         //printf("%f",c->particle->x);
         n->particle = NULL;
         n->total_mass--;
-        n->center_of_mass[0] = 0; // initialized to address warning from Valgrind in qtree_force
-        n->center_of_mass[1] = 0; // initialized to address warning from Valgrind in qtree_force
+        // n->center_of_mass[0] = 0; // test remove
+        // n->center_of_mass[1] = 0; // test remove
         c = which_child_contains(n,p);
         /*if (c == NULL)
             printf("c is NULL");
@@ -240,8 +267,8 @@ void qTree_insert(Particle *p, QTNode *n){
         n->particle = p;
         n->total_mass++;
 
-        n->center_of_mass[0] = n->particle->x;
-        n->center_of_mass[1] = n->particle->y;
+        //n->center_of_mass[0] = n->particle->x; // test remove
+        //n->center_of_mass[1] = n->particle->y; // test remove
         /*QTNode *node = n->parent;
         while(node != NULL) {
             //n->parent->center_of_mass[0] = ((n->parent->center_of_mass[0]) * (n->parent->total_mass) + (n->particle->x)) / (n->parent->total_mass + 1);
@@ -253,17 +280,24 @@ void qTree_insert(Particle *p, QTNode *n){
 }
 
 void compute_COM(QTNode *root){
-    if (root == NULL || is_leaf(root)) 
+    if (root == NULL) 
         return;
+    else if (root->particle != NULL && is_leaf(root)){
+        root->center_of_mass[0] = root->particle->x;
+        root->center_of_mass[1] = root->particle->y;
+        return;
+    }
     else {
         for (int i = 0; i < N; i++)
             compute_COM(root->child[i]);
         float x_coord_total = 0;
         float y_coord_total = 0;
         for (int i = 0; i < N; i++){
-            root->total_mass += root->child[i]->total_mass;
-            x_coord_total += root->child[i]->center_of_mass[0] * root->child[i]->total_mass;
-            y_coord_total += root->child[i]->center_of_mass[1] * root->child[i]->total_mass;
+            if (root->child[i] != NULL){
+                root->total_mass += root->child[i]->total_mass;
+                x_coord_total += root->child[i]->center_of_mass[0] * root->child[i]->total_mass;
+                y_coord_total += root->child[i]->center_of_mass[1] * root->child[i]->total_mass;
+            }
         }
         root->center_of_mass[0] = x_coord_total / root->total_mass;
         root->center_of_mass[1] = y_coord_total / root->total_mass;
@@ -280,8 +314,8 @@ QTNode *create_node(QTNode *parent, int child_index){
     node->particle = NULL;
     node->parent = parent;
     node->total_mass = 0;
-    node->center_of_mass[0] = 0; // legal?
-    node->center_of_mass[1] = 0;
+    // node->center_of_mass[0] = 0; // legal?
+    // node->center_of_mass[1] = 0;
     if (parent == NULL){
         node->size = DOMAIN_SIZE;
         node->lb = 0.; node->rb = DOMAIN_SIZE;
@@ -391,20 +425,19 @@ void qTree_destroy(QTNode *node){
     } 
 } */
 
-/* void calc_force(Particle *p, float dt, int n) {
+void calc_force(Particle *p, float dt, int n) {
   for (int i = 0; i < n; i++) { 
-    float Fx = 0.0f; float Fy = 0.0f; float Fz = 0.0f;
+    float Fx = 0.0f; float Fy = 0.0f;
 
     for (int j = 0; j < n; j++) {
       float dx = p[j].x - p[i].x;
       float dy = p[j].y - p[i].y;
-      float dz = p[j].z - p[i].z;
-      float distSqr = dx*dx + dy*dy + dz*dz + SOFTENING;
+      float distSqr = dx*dx + dy*dy + SOFTENING;
       float invDist = 1.0f / sqrtf(distSqr);
       float invDist3 = invDist * invDist * invDist;
 
-      Fx += dx * invDist3; Fy += dy * invDist3; Fz += dz * invDist3;
+      Fx += dx * invDist3; Fy += dy * invDist3; 
     }
-    p[i].vx += dt*Fx; p[i].vy += dt*Fy; p[i].vz += dt*Fz;
+    p[i].vx += dt*Fx; p[i].vy += dt*Fy; 
   }
-} */
+} 

@@ -41,7 +41,7 @@ void calc_force(Particle *p, float dt, int n);
 int main(const int argc, const char** argv) {
     
     FILE *datafile    = NULL;      // output file for particle positions 
-    int   nParticles  = 100;      // number of particles 
+    int   nParticles  = 3000;      // number of particles 
 
     if (argc > 1)
         nParticles      = atoi(argv[1]);
@@ -100,11 +100,15 @@ int main(const int argc, const char** argv) {
             p_test[i].x += p_test[i].vx*dt;
             p_test[i].y += p_test[i].vy*dt;
         }
+        /*for (int i = 0 ; i < nParticles; i++) { 
+            if((fabs(p[i].x - p_test[i].x) > MARGIN) || (fabs(p[i].y - p_test[i].y) > MARGIN))
+                printf("Error: x and y differ by %f and %f for particle %d.\n", fabs(p[i].x - p_test[i].x),fabs(p[i].y - p_test[i].y),i); 
+        } */
         for (int i = 0 ; i < nParticles; i++) { 
-            assert(fabs(p[i].vx - p_test[i].vx) < MARGIN); 
-            assert(fabs(p[i].vy - p_test[i].vy) < MARGIN); 
+            assert(fabs(p[i].x - p_test[i].x) < MARGIN); 
+            assert(fabs(p[i].y - p_test[i].y) < MARGIN); 
         }
-        printf("Passed all tests.\n"); 
+        printf("Passed accuracy tests.\n"); 
         
     }
 
@@ -184,10 +188,8 @@ float *qTree_force(Particle *k, QTNode *n){
         float distSqr = dx*dx + dy*dy + SOFTENING;
         float invDist = 1.0f / sqrtf(distSqr);
         float invDist3 = invDist * invDist * invDist;
-        float Fx = dx * invDist3; 
-        float Fy = dy * invDist3;
-        forces[0] += Fx;
-        forces[1] += Fy;
+        forces[0] = dx * invDist3; 
+        forces[1] = dy * invDist3;
         return forces;
     }
     else{
@@ -198,10 +200,8 @@ float *qTree_force(Particle *k, QTNode *n){
             float distSqr = dx*dx + dy*dy + SOFTENING;
             float invDist = 1.0f / sqrtf(distSqr);
             float invDist3 = invDist * invDist * invDist;
-            float Fx = n->total_mass * dx * invDist3; 
-            float Fy = n->total_mass * dy * invDist3;
-            forces[0] += Fx;
-            forces[1] += Fy;
+            forces[0] = n->total_mass * dx * invDist3; 
+            forces[1] = n->total_mass * dy * invDist3;
             return forces;
         }
         else{ 
@@ -357,7 +357,8 @@ int is_leaf(QTNode *n){
 /* randomly initialize particle positions and momenta */
 void ran_init(float *data, int n) {
   for (int i = 0; i < n; i++) {
-    data[i] = (float)rand()/(float)(RAND_MAX);
+    data[i] = fabs(2.0f * (rand() / (float)RAND_MAX) - 1.0f);
+    //data[i] = (float)rand()/(float)(RAND_MAX);
   }
 }
 

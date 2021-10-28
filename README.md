@@ -12,15 +12,18 @@ Include a README with your name, the assignment, a list of any references you us
 ## References
 I did not use any references other than class materials.
 
-## Discussion on program
+## Discussion on program and performance
 I did not observe any compilation or run-time errors. The Valgrind report is clean.
 
 With theta set to 0,
+
 x and y values converge to a precision of 0.0001 up to approximately 920 particles for one iteration.
+
 x and y values converge to a precision of 0.001 up to approximately 1350 particles for one iteration.
+
 x and y values converge to a precision of 0.01 up to approximately 4400 particles for one iteration.
 
-The algorithm's accuracy declines as the number of particles increases because of the non-associativity of floating point arithmetic and the chaos of the n-body problem which means that even small differences in the values could grow exponentially with time. The algorithm's declining accuracy could also have been compouded by a bug in the program.
+The algorithm's accuracy declines as the number of particles increases because of the non-associativity of floating point arithmetic and the chaos of the n-body problem which means that even small differences in the values could grow exponentially with time. 
 
 ## Compiling and running
 `make nbody_bh` and then `./nbody_bh` which uses the default 3000 particles or `./nbody_bh x` where x is an integer representing the number of particles. Finally, run `make clean`.

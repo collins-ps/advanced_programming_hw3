@@ -17,11 +17,11 @@ I did not observe any compilation or run-time errors. The Valgrind report is cle
 
 With theta set to 0,
 
-x and y values converge to a precision of 0.0001 up to approximately 920 particles for one iteration.
+x and y values converge to a precision of 0.01 up to approximately 4400 particles for one iteration.
 
 x and y values converge to a precision of 0.001 up to approximately 1350 particles for one iteration.
 
-x and y values converge to a precision of 0.01 up to approximately 4400 particles for one iteration.
+x and y values converge to a precision of 0.0001 up to approximately 920 particles for one iteration.
 
 The algorithm's accuracy declines as the number of particles increases because of the non-associativity of floating point arithmetic and the chaos of the n-body problem which means that even small differences in the values could grow exponentially with time. 
 

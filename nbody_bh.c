@@ -33,7 +33,6 @@ QTNode *create_node(QTNode *parent, int child_index);
 QTNode *which_child_contains(QTNode *n, Particle *p);
 static int in_nox(Particle *p, float lb, float rb, float db, float ub);
 int is_leaf(QTNode *n);
-void postorder(QTNode *node);
 void ran_init(float *data, int n);
 void qTree_destroy(QTNode *node);
 float *qTree_force(Particle *k, QTNode *n);
@@ -98,8 +97,8 @@ int main(const int argc, const char** argv) {
         // tests for algorithm's accuracy
         calc_force(p_test, dt, nParticles); 
         for (int i = 0 ; i < nParticles; i++) {  /* compute new position */
-            p[i].x += p[i].vx*dt;
-            p[i].y += p[i].vy*dt;
+            p_test[i].x += p_test[i].vx*dt;
+            p_test[i].y += p_test[i].vy*dt;
         }
         for (int i = 0 ; i < nParticles; i++) { 
             assert(fabs(p[i].vx - p_test[i].vx) < MARGIN); 
@@ -178,8 +177,7 @@ int main(const int argc, const char** argv) {
 
 float *qTree_force(Particle *k, QTNode *n){
     float *forces = malloc(2*sizeof(float));
-    forces[0] = 0;
-    forces[1] = 0;
+    forces[0] = 0; forces[1] = 0;
     if (n->total_mass == 1){
         float dx = n->particle->x - k->x;
         float dy = n->particle->y - k->y;
